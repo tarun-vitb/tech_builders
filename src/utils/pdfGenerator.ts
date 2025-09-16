@@ -1,5 +1,4 @@
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import { User, Activity } from '../types';
 
 export const generatePDFPortfolio = async (user: User, activities: Activity[]) => {

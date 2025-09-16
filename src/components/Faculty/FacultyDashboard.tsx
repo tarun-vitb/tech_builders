@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, CheckCircle, XCircle, MessageSquare, FileText, Users } from 'lucide-react';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Activity } from '../../types';
 import ReviewModal from './ReviewModal';
@@ -129,7 +129,7 @@ const FacultyDashboard: React.FC = () => {
         ].map(({ key, label, count }) => (
           <button
             key={key}
-            onClick={() => setFilter(key as any)}
+            onClick={() => setFilter(key as 'all' | 'pending' | 'approved' | 'rejected')}
             className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
               filter === key
                 ? 'bg-white text-gray-900 shadow-sm'

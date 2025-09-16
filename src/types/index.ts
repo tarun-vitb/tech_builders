@@ -18,8 +18,8 @@ export interface Activity {
   fileType: string;
   status: 'pending' | 'approved' | 'rejected';
   remarks?: string;
-  createdAt: any;
-  reviewedAt?: any;
+  createdAt: { toDate: () => Date } | Date;
+  reviewedAt?: { toDate: () => Date } | Date;
   reviewedBy?: string;
 }
 

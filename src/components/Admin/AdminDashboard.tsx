@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart3, Users, FileText, Clock, CheckCircle, XCircle, TrendingUp } from 'lucide-react';
-import { collection, query, onSnapshot, where } from 'firebase/firestore';
+import { collection, query, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Activity, User, Stats } from '../../types';
 
