@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginScreen from './components/Auth/LoginScreen';
+import CreateAccount from './components/Auth/CreateAccount';
 import Header from './components/Layout/Header';
 import StudentDashboard from './components/Student/StudentDashboard';
 import FacultyDashboard from './components/Faculty/FacultyDashboard';
@@ -21,8 +22,17 @@ const AppContent: React.FC = () => {
     );
   }
 
+  // When not authenticated, allow navigation between landing and create-account
   if (!user) {
-    return <LoginScreen />;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+        <Routes>
+          <Route path="/" element={<LoginScreen />} />
+          <Route path="/create-account" element={<CreateAccount />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+    );
   }
 
   return (

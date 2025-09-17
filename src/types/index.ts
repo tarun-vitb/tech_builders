@@ -4,6 +4,11 @@ export interface User {
   email: string;
   role: 'student' | 'faculty' | 'admin';
   photoURL?: string;
+  // Optional profile fields
+  rollNo?: string;
+  facultyId?: string;
+  branch?: string;
+  accreditation?: 'nba' | 'naac';
 }
 
 export interface Activity {

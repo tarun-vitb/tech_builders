@@ -33,6 +33,8 @@ const UploadActivityModal: React.FC<UploadActivityModalProps> = ({ isOpen, onClo
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
 
   if (!isOpen) return null;
 
@@ -67,7 +69,10 @@ const UploadActivityModal: React.FC<UploadActivityModalProps> = ({ isOpen, onClo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user || !file) return;
+    if (!user || !file) {
+      setError('User not authenticated or no file selected');
+      return;
+    }
 
     if (!formData.title.trim() || !formData.description.trim() || !formData.category) {
       setError('Please fill in all required fields');
@@ -76,15 +81,32 @@ const UploadActivityModal: React.FC<UploadActivityModalProps> = ({ isOpen, onClo
 
     setIsUploading(true);
     setError('');
+    setUploadProgress(0);
 
     try {
-      // Upload file to Firebase Storage
+      console.log('Starting upload process...', { user: user.uid, fileName: file.name, fileSize: file.size });
+      
+      // Upload file to Firebase Storage with timeout
       const fileRef = ref(storage, `activities/${user.uid}/${Date.now()}_${file.name}`);
-      const uploadResult = await uploadBytes(fileRef, file);
+      console.log('Uploading file to storage...', fileRef.fullPath);
+      
+      // Add timeout to prevent hanging
+      setUploadProgress(25);
+      const uploadPromise = uploadBytes(fileRef, file);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Upload timeout after 30 seconds')), 30000)
+      );
+      
+      const uploadResult = await Promise.race([uploadPromise, timeoutPromise]) as any;
+      setUploadProgress(75);
+      console.log('File uploaded successfully:', uploadResult);
+      
       const fileUrl = await getDownloadURL(uploadResult.ref);
+      console.log('Got download URL:', fileUrl);
 
       // Save activity to Firestore
-      await addDoc(collection(db, 'activities'), {
+      console.log('Saving activity to Firestore...');
+      const activityData = {
         studentId: user.uid,
         studentName: user.name,
         title: formData.title.trim(),
@@ -95,7 +117,11 @@ const UploadActivityModal: React.FC<UploadActivityModalProps> = ({ isOpen, onClo
         fileType: file.type,
         status: 'pending',
         createdAt: serverTimestamp()
-      });
+      };
+      
+      const docRef = await addDoc(collection(db, 'activities'), activityData);
+      console.log('Activity saved successfully with ID:', docRef.id);
+      setUploadProgress(100);
 
       // Reset form and close modal
       setFormData({ title: '', description: '', category: '' });
@@ -103,9 +129,52 @@ const UploadActivityModal: React.FC<UploadActivityModalProps> = ({ isOpen, onClo
       onClose();
     } catch (error) {
       console.error('Error uploading activity:', error);
+      
+      // More specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes('storage/unauthorized')) {
+          setError('Storage access denied. Please check your permissions.');
+        } else if (error.message.includes('storage/network-request-failed')) {
+          setError('Network error. Please check your internet connection.');
+        } else if (error.message.includes('permission-denied')) {
+          setError('Permission denied. Please contact support.');
+        } else {
+          setError(`Upload failed: ${error.message}`);
+        }
+      } else {
       setError('Failed to upload activity. Please try again.');
+      }
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    setIsTestingConnection(true);
+    setError('');
+    
+    try {
+      // Simple connection test
+      const testRef = ref(storage, 'test/connection-test.txt');
+      const testBlob = new Blob(['Connection test'], { type: 'text/plain' });
+      await uploadBytes(testRef, testBlob);
+      setError('Firebase connection test passed! You can now try uploading.');
+    } catch (error) {
+      console.error('Connection test failed:', error);
+      if (error instanceof Error) {
+        if (error.message.includes('storage/unauthorized')) {
+          setError('Storage access denied. Please check Firebase Storage rules.');
+        } else if (error.message.includes('network')) {
+          setError('Network error. Please check your internet connection.');
+        } else {
+          setError(`Connection test failed: ${error.message}`);
+        }
+      } else {
+        setError('Connection test failed. Please check Firebase configuration.');
+      }
+    } finally {
+      setIsTestingConnection(false);
     }
   };
 
@@ -114,6 +183,7 @@ const UploadActivityModal: React.FC<UploadActivityModalProps> = ({ isOpen, onClo
       setFormData({ title: '', description: '', category: '' });
       setFile(null);
       setError('');
+      setUploadProgress(0);
       onClose();
     }
   };
@@ -144,6 +214,22 @@ const UploadActivityModal: React.FC<UploadActivityModalProps> = ({ isOpen, onClo
             <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-2">
               <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
               <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
+
+          {isUploading && (
+            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center space-x-2 mb-2">
+                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-blue-700">Uploading your activity...</p>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+              <p className="text-xs text-blue-600 mt-1">{uploadProgress}% complete</p>
             </div>
           )}
 
@@ -244,32 +330,50 @@ const UploadActivityModal: React.FC<UploadActivityModalProps> = ({ isOpen, onClo
               </div>
             </div>
 
-            <div className="flex justify-end space-x-3 pt-6">
+            <div className="flex justify-between items-center pt-6">
               <button
                 type="button"
-                onClick={handleClose}
-                disabled={isUploading}
-                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-gray-500 transition-colors disabled:opacity-50"
+                onClick={handleTestConnection}
+                disabled={isUploading || isTestingConnection}
+                className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-gray-500 transition-colors disabled:opacity-50 flex items-center space-x-2"
               >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isUploading || !file}
-                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-lg shadow-md hover:shadow-lg focus:ring-2 focus:ring-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-              >
-                {isUploading ? (
+                {isTestingConnection ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Uploading...</span>
+                    <div className="w-3 h-3 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
+                    <span>Testing...</span>
                   </>
                 ) : (
-                  <>
-                    <Upload className="h-4 w-4" />
-                    <span>Upload Activity</span>
-                  </>
+                  <span>Test Connection</span>
                 )}
               </button>
+              
+              <div className="flex space-x-3">
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  disabled={isUploading}
+                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-gray-500 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUploading || !file}
+                  className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-lg shadow-md hover:shadow-lg focus:ring-2 focus:ring-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                >
+                  {isUploading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Uploading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4" />
+                      <span>Upload Activity</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </form>
         </div>

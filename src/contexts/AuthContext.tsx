@@ -9,10 +9,15 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, googleProvider, db } from '../config/firebase';
 import { User } from '../types';
 
+type UserRole = 'student' | 'faculty' | 'admin';
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: (
+    role?: UserRole,
+    profileExtras?: Partial<Pick<User, 'rollNo' | 'facultyId' | 'branch' | 'accreditation'>>
+  ) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -63,9 +68,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return unsubscribe;
   }, []);
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (
+    role?: UserRole,
+    profileExtras?: Partial<Pick<User, 'rollNo' | 'facultyId' | 'branch' | 'accreditation'>>
+  ) => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      const cred = await signInWithPopup(auth, googleProvider);
+      const firebaseUser = cred.user;
+
+      const userRef = doc(db, 'users', firebaseUser.uid);
+      const existing = await getDoc(userRef);
+
+      const baseUser: User = existing.exists()
+        ? (existing.data() as User)
+        : {
+            uid: firebaseUser.uid,
+            name: firebaseUser.displayName || 'Unknown User',
+            email: firebaseUser.email || '',
+            role: role || 'student',
+            photoURL: firebaseUser.photoURL || undefined,
+          };
+
+      const updated: User = {
+        ...baseUser,
+        role: role || baseUser.role,
+        ...(profileExtras || {}),
+      } as User;
+
+      await setDoc(userRef, updated, { merge: true });
+      setUser(updated);
     } catch (error) {
       console.error('Sign in error:', error);
       throw error;
