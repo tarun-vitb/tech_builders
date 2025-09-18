@@ -18,9 +18,11 @@ export interface Activity {
   title: string;
   description: string;
   category: string;
-  fileUrl: string;
+  fileId?: string; // Reference to file document in Firestore
+  fileUrl?: string; // Legacy field for backward compatibility
   fileName: string;
   fileType: string;
+  fileSize?: number;
   status: 'pending' | 'approved' | 'rejected';
   remarks?: string;
   createdAt: { toDate: () => Date } | Date;

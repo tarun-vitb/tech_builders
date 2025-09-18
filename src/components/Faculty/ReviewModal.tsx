@@ -4,6 +4,7 @@ import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Activity } from '../../types';
+import FileViewer from '../FileViewer';
 
 interface ReviewModalProps {
   activity: Activity;
@@ -115,14 +116,20 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ activity, onClose }) => {
                   <div>
                     <label className="text-sm font-medium text-gray-700">File</label>
                     <div className="mt-2">
-                      <a
-                        href={activity.fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center space-x-2 text-blue-600 hover:text-blue-800 underline"
-                      >
-                        <span>{activity.fileName}</span>
-                      </a>
+                      {activity.fileId ? (
+                        <span className="text-blue-600">{activity.fileName}</span>
+                      ) : activity.fileUrl ? (
+                        <a
+                          href={activity.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center space-x-2 text-blue-600 hover:text-blue-800 underline"
+                        >
+                          <span>{activity.fileName}</span>
+                        </a>
+                      ) : (
+                        <span className="text-gray-400">No file</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -131,27 +138,39 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ activity, onClose }) => {
               {/* File Preview */}
               <div>
                 <h4 className="text-md font-medium text-gray-900 mb-2">File Preview</h4>
-                <div className="border rounded-lg p-4 bg-gray-50">
-                  {activity.fileType === 'application/pdf' ? (
-                    <div className="text-center py-8">
-                      <p className="text-gray-600 mb-4">PDF Preview</p>
-                      <iframe
-                        src={activity.fileUrl}
-                        width="100%"
-                        height="400"
-                        className="border rounded"
-                      />
-                    </div>
-                  ) : (
-                    <div className="text-center">
-                      <img
-                        src={activity.fileUrl}
-                        alt={activity.title}
-                        className="max-w-full max-h-96 mx-auto rounded"
-                      />
-                    </div>
-                  )}
-                </div>
+                {activity.fileId ? (
+                  <FileViewer
+                    fileId={activity.fileId}
+                    fileName={activity.fileName}
+                    fileType={activity.fileType}
+                  />
+                ) : activity.fileUrl ? (
+                  <div className="border rounded-lg p-4 bg-gray-50">
+                    {activity.fileType === 'application/pdf' ? (
+                      <div className="text-center py-8">
+                        <p className="text-gray-600 mb-4">PDF Preview</p>
+                        <iframe
+                          src={activity.fileUrl}
+                          width="100%"
+                          height="400"
+                          className="border rounded"
+                        />
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <img
+                          src={activity.fileUrl}
+                          alt={activity.title}
+                          className="max-w-full max-h-96 mx-auto rounded"
+                        />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="border rounded-lg p-8 bg-gray-50 text-center">
+                    <p className="text-gray-500">No file available</p>
+                  </div>
+                )}
               </div>
             </div>
 

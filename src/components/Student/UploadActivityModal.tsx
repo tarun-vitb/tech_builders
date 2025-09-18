@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { X, Upload, FileText, Image, AlertCircle } from 'lucide-react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../../config/firebase';
+import { collection, addDoc, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
+import { db } from '../../config/firebase';
+import { getSupabase } from '../../config/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface UploadActivityModalProps {
@@ -86,67 +86,65 @@ const UploadActivityModal: React.FC<UploadActivityModalProps> = ({ isOpen, onClo
     try {
       console.log('Starting upload process...', { user: user.uid, fileName: file.name, fileSize: file.size });
       
-      // Upload file to Firebase Storage with timeout
-      const fileRef = ref(storage, `activities/${user.uid}/${Date.now()}_${file.name}`);
-      console.log('Uploading file to storage...', fileRef.fullPath);
+      // Convert file to base64 for storage in Firestore
+      const reader = new FileReader();
+      const fileData = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
       
-      // Add timeout to prevent hanging
-      setUploadProgress(25);
-      const uploadPromise = uploadBytes(fileRef, file);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Upload timeout after 30 seconds')), 30000)
-      );
-      
-      const uploadResult = await Promise.race([uploadPromise, timeoutPromise]) as any;
-      setUploadProgress(75);
-      console.log('File uploaded successfully:', uploadResult);
-      
-      const fileUrl = await getDownloadURL(uploadResult.ref);
-      console.log('Got download URL:', fileUrl);
+      setUploadProgress(50);
+      console.log('File converted to base64');
 
-      // Save activity to Firestore
-      console.log('Saving activity to Firestore...');
-      const activityData = {
-        studentId: user.uid,
-        studentName: user.name,
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        category: formData.category,
-        fileUrl,
-        fileName: file.name,
-        fileType: file.type,
-        status: 'pending',
-        createdAt: serverTimestamp()
-      };
-      
-      const docRef = await addDoc(collection(db, 'activities'), activityData);
-      console.log('Activity saved successfully with ID:', docRef.id);
-      setUploadProgress(100);
+      // Save file metadata and data to Firestore files collection
+      try {
+        const fileDoc = await addDoc(collection(db, 'files'), {
+          uid: user.uid,
+          name: file.name,
+          size: file.size,
+          contentType: file.type,
+          data: fileData, // Store base64 data
+          createdAt: serverTimestamp()
+        });
+        console.log('File metadata saved successfully to Firestore');
+        setUploadProgress(75);
 
-      // Reset form and close modal
-      setFormData({ title: '', description: '', category: '' });
-      setFile(null);
-      onClose();
-    } catch (error) {
-      console.error('Error uploading activity:', error);
-      
-      // More specific error messages
-      if (error instanceof Error) {
-        if (error.message.includes('storage/unauthorized')) {
-          setError('Storage access denied. Please check your permissions.');
-        } else if (error.message.includes('storage/network-request-failed')) {
-          setError('Network error. Please check your internet connection.');
-        } else if (error.message.includes('permission-denied')) {
-          setError('Permission denied. Please contact support.');
-        } else {
-          setError(`Upload failed: ${error.message}`);
-        }
-      } else {
-      setError('Failed to upload activity. Please try again.');
+        // Save activity to Firestore with file reference
+        const activityData = {
+          studentId: user.uid,
+          studentName: user.name || user.email || '',
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          category: formData.category,
+          fileId: fileDoc.id, // Reference to the file document
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+          status: 'pending',
+          createdAt: serverTimestamp()
+        };
+        await addDoc(collection(db, 'activities'), activityData);
+        console.log('Activity saved successfully');
+        setUploadProgress(100);
+
+        // Reset form and close modal
+        setFormData({ title: '', description: '', category: '' });
+        setFile(null);
+        setIsUploading(false);
+        onClose();
+        
+        setTimeout(() => setUploadProgress(0), 500);
+      } catch (metaErr) {
+        console.error('Error saving to Firestore:', metaErr);
+        setError('Failed to save activity. Please try again.');
+        setIsUploading(false);
+        return;
       }
-    } finally {
+    } catch (outerError) {
+      console.error('Unexpected error during upload:', outerError);
       setIsUploading(false);
-      setUploadProgress(0);
+      setError('Unexpected error during upload. Please try again.');
     }
   };
 
@@ -155,23 +153,28 @@ const UploadActivityModal: React.FC<UploadActivityModalProps> = ({ isOpen, onClo
     setError('');
     
     try {
-      // Simple connection test
-      const testRef = ref(storage, 'test/connection-test.txt');
-      const testBlob = new Blob(['Connection test'], { type: 'text/plain' });
-      await uploadBytes(testRef, testBlob);
-      setError('Firebase connection test passed! You can now try uploading.');
+      // Test Firestore connection by trying to write a test document
+      const testDoc = await addDoc(collection(db, 'test'), {
+        test: true,
+        timestamp: serverTimestamp()
+      });
+      
+      // Clean up the test document
+      await deleteDoc(doc(db, 'test', testDoc.id));
+      
+      setError('Firestore connection test passed! You can now try uploading.');
     } catch (error) {
       console.error('Connection test failed:', error);
       if (error instanceof Error) {
-        if (error.message.includes('storage/unauthorized')) {
-          setError('Storage access denied. Please check Firebase Storage rules.');
+        if (error.message.includes('permission')) {
+          setError('Firestore access denied. Please check your Firebase rules.');
         } else if (error.message.includes('network')) {
           setError('Network error. Please check your internet connection.');
         } else {
           setError(`Connection test failed: ${error.message}`);
         }
       } else {
-        setError('Connection test failed. Please check Firebase configuration.');
+        setError('Connection test failed. Please check your Firebase configuration.');
       }
     } finally {
       setIsTestingConnection(false);

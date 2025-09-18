@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Activity } from '../../types';
 import UploadActivityModal from './UploadActivityModal';
 import { generatePDFPortfolio } from '../../utils/pdfGenerator';
+import FileViewer from '../FileViewer';
 
 const StudentDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -16,16 +17,22 @@ const StudentDashboard: React.FC = () => {
   useEffect(() => {
     if (!user) return;
 
+    // First get all activities for the student, then sort in memory to avoid index requirement
     const q = query(
       collection(db, 'activities'),
-      where('studentId', '==', user.uid),
-      orderBy('createdAt', 'desc')
+      where('studentId', '==', user.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const activitiesData: Activity[] = [];
       snapshot.forEach((doc) => {
         activitiesData.push({ id: doc.id, ...doc.data() } as Activity);
+      });
+      // Sort by createdAt in descending order in memory
+      activitiesData.sort((a, b) => {
+        const aTime = a.createdAt?.toDate?.() || new Date(0);
+        const bTime = b.createdAt?.toDate?.() || new Date(0);
+        return bTime.getTime() - aTime.getTime();
       });
       setActivities(activitiesData);
     });
@@ -201,14 +208,20 @@ const StudentDashboard: React.FC = () => {
                     <div className="flex items-center space-x-4 text-sm text-gray-500 mb-3">
                       <span className="bg-gray-100 px-2 py-1 rounded-md">{activity.category}</span>
                       <span>{new Date(activity.createdAt?.toDate()).toLocaleDateString()}</span>
-                      <a 
-                        href={activity.fileUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 underline"
-                      >
-                        View File
-                      </a>
+                      {activity.fileId ? (
+                        <span className="text-blue-600">File attached</span>
+                      ) : activity.fileUrl ? (
+                        <a 
+                          href={activity.fileUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 underline"
+                        >
+                          View File
+                        </a>
+                      ) : (
+                        <span className="text-gray-400">No file</span>
+                      )}
                     </div>
 
                     {activity.remarks && (
