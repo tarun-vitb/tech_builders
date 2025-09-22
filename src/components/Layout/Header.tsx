@@ -1,9 +1,11 @@
 import React from 'react';
 import { LogOut, User, BookOpen } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Header: React.FC = () => {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const handleSignOut = async () => {
     try {
@@ -60,6 +62,13 @@ const Header: React.FC = () => {
                   )}
                 </div>
               </div>
+              <button
+                onClick={() => navigate('/profile')}
+                className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 shadow-sm transition-all"
+                title="View Profile"
+              >
+                Profile
+              </button>
               
               <button
                 onClick={handleSignOut}

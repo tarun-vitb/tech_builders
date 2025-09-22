@@ -49,7 +49,7 @@ const LoginScreen: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 fade-in">
       {/* Top bar with login buttons */}
       <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex items-center space-x-3">
@@ -63,25 +63,34 @@ const LoginScreen: React.FC = () => {
           </div>
         </div>
 
-        <button
-          type="button"
-          className="text-sm sm:text-base px-4 py-2 rounded-lg border border-gray-200 bg-white/70 hover:bg-white text-gray-800 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5"
-          onClick={() => navigate('/create-account')}
-        >
-          Create Account
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            className="text-sm sm:text-base px-4 py-2 rounded-lg glass-button"
+            onClick={() => navigate('/create-account')}
+          >
+            Create Account
+          </button>
+          <button
+            type="button"
+            className="text-sm sm:text-base px-4 py-2 rounded-lg glass-button"
+            onClick={() => navigate('/sign-in')}
+          >
+            Sign In
+          </button>
+        </div>
       </div>
 
       {/* Hero Image */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-2xl shadow-lg border border-white/30">
+        <div className="relative overflow-hidden rounded-2xl shadow-lg border border-white/30 glass-panel">
           <img
             src="/college-hero.jpg.jfif"
             alt="College campus"
             className="w-full h-64 sm:h-80 lg:h-[28rem] object-cover"
           />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4 sm:p-6 lg:p-8">
-            <div className="bg-black/50 text-white text-sm sm:text-base lg:text-lg px-3 sm:px-4 py-2 sm:py-3 rounded-lg backdrop-blur">
+            <div className="bg-black/40 text-white text-sm sm:text-base lg:text-lg px-3 sm:px-4 py-2 sm:py-3 rounded-lg backdrop-blur-md transition-opacity duration-300">
               Showcase achievements, receive faculty feedback, and explore analytics-driven insights — all in one place.
             </div>
           </div>
@@ -94,7 +103,7 @@ const LoginScreen: React.FC = () => {
           {features.map(({ title, description }) => (
             <div
               key={title}
-              className="group relative overflow-hidden rounded-xl bg-white/90 backdrop-blur-md border border-gray-100 p-5 sm:p-6 shadow-sm transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
+              className="group relative overflow-hidden rounded-xl glass-card p-5 sm:p-6"
             >
               <h3 className="font-semibold text-blue-700 group-hover:text-purple-700 transition-colors mb-2">{title}</h3>
               <p className="text-sm text-gray-700 group-hover:text-gray-800 leading-relaxed">{description}</p>

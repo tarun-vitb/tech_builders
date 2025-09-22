@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, FileText, Clock, CheckCircle, XCircle, Download, Upload } from 'lucide-react';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Activity } from '../../types';
@@ -13,6 +13,10 @@ const StudentDashboard: React.FC = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [complaintText, setComplaintText] = useState('');
+  const [complaintFacultyId, setComplaintFacultyId] = useState('');
+  const [complaintSending, setComplaintSending] = useState(false);
+  const [complaintMessage, setComplaintMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -89,8 +93,36 @@ const StudentDashboard: React.FC = () => {
     rejected: activities.filter(a => a.status === 'rejected').length,
   };
 
+  const submitComplaint = async () => {
+    if (!user) return;
+    if (!complaintText.trim()) {
+      setComplaintMessage('Please enter a complaint before submitting.');
+      return;
+    }
+    try {
+      setComplaintSending(true);
+      setComplaintMessage(null);
+      await addDoc(collection(db, 'complaints'), {
+        studentUid: user.uid,
+        studentName: user.name,
+        studentEmail: user.email,
+        facultyId: complaintFacultyId.trim() || null,
+        message: complaintText.trim(),
+        status: 'open',
+        createdAt: serverTimestamp(),
+      });
+      setComplaintText('');
+      setComplaintFacultyId('');
+      setComplaintMessage('Complaint submitted to admin successfully.');
+    } catch (e: any) {
+      setComplaintMessage(e?.message || 'Failed to submit complaint.');
+    } finally {
+      setComplaintSending(false);
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -122,7 +154,7 @@ const StudentDashboard: React.FC = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white/80 backdrop-blur-md rounded-xl p-6 border border-white/20 shadow-lg">
+        <div className="rounded-xl p-6 glass-panel">
           <div className="flex items-center">
             <div className="p-2 bg-blue-100 rounded-lg">
               <FileText className="h-6 w-6 text-blue-600" />
@@ -134,7 +166,7 @@ const StudentDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-md rounded-xl p-6 border border-white/20 shadow-lg">
+        <div className="rounded-xl p-6 glass-panel">
           <div className="flex items-center">
             <div className="p-2 bg-yellow-100 rounded-lg">
               <Clock className="h-6 w-6 text-yellow-600" />
@@ -146,7 +178,7 @@ const StudentDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-md rounded-xl p-6 border border-white/20 shadow-lg">
+        <div className="rounded-xl p-6 glass-panel">
           <div className="flex items-center">
             <div className="p-2 bg-green-100 rounded-lg">
               <CheckCircle className="h-6 w-6 text-green-600" />
@@ -158,7 +190,7 @@ const StudentDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-md rounded-xl p-6 border border-white/20 shadow-lg">
+        <div className="rounded-xl p-6 glass-panel">
           <div className="flex items-center">
             <div className="p-2 bg-red-100 rounded-lg">
               <XCircle className="h-6 w-6 text-red-600" />
@@ -172,7 +204,7 @@ const StudentDashboard: React.FC = () => {
       </div>
 
       {/* Activities List */}
-      <div className="bg-white/80 backdrop-blur-md rounded-xl border border-white/20 shadow-lg">
+      <div className="rounded-xl border glass-panel">
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Recent Activities</h2>
         </div>
@@ -184,7 +216,7 @@ const StudentDashboard: React.FC = () => {
             <p className="text-gray-600 mb-6">Start by uploading your first achievement or activity</p>
             <button
               onClick={() => setIsUploadModalOpen(true)}
-              className="inline-flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
+              className="inline-flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg gradient-button"
             >
               <Plus className="h-4 w-4" />
               <span>Add Your First Activity</span>
@@ -193,7 +225,7 @@ const StudentDashboard: React.FC = () => {
         ) : (
           <div className="divide-y divide-gray-200">
             {activities.map((activity) => (
-              <div key={activity.id} className="p-6 hover:bg-gray-50/50 transition-colors">
+              <div key={activity.id} className="p-6 hover:bg-white/50 transition-colors">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
@@ -249,6 +281,40 @@ const StudentDashboard: React.FC = () => {
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
       />
+
+      {/* Complaint Box */}
+      <div className="rounded-xl border glass-panel mt-6">
+        <div className="p-6 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">Report Faculty Bias (Private to Admin)</h2>
+          <p className="text-sm text-gray-600">This message will be sent to the admin team.</p>
+        </div>
+        <div className="p-6 space-y-3">
+          <input
+            type="text"
+            value={complaintFacultyId}
+            onChange={(e) => setComplaintFacultyId(e.target.value)}
+            placeholder="Faculty ID (optional)"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-200"
+          />
+          <textarea
+            value={complaintText}
+            onChange={(e) => setComplaintText(e.target.value)}
+            placeholder="Describe the issue you faced..."
+            rows={4}
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-200"
+          />
+          <div className="flex items-center justify-between">
+            {complaintMessage && <p className="text-sm text-gray-600">{complaintMessage}</p>}
+            <button
+              onClick={submitComplaint}
+              disabled={complaintSending}
+              className="inline-flex items-center space-x-2 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white px-4 py-2 rounded-lg gradient-button disabled:opacity-50"
+            >
+              {complaintSending ? 'Sending...' : 'Submit Complaint'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

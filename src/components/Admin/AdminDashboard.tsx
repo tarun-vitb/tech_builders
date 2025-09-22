@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart3, Users, FileText, Clock, CheckCircle, XCircle, TrendingUp } from 'lucide-react';
-import { collection, query, onSnapshot } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Activity, User, Stats } from '../../types';
 
@@ -15,6 +15,8 @@ const AdminDashboard: React.FC = () => {
   });
   const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
   const [categoryData, setCategoryData] = useState<{[key: string]: number}>({});
+  const [requests, setRequests] = useState<any[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
 
   useEffect(() => {
     // Listen to users collection
@@ -24,6 +26,7 @@ const AdminDashboard: React.FC = () => {
       snapshot.forEach((doc) => {
         users.push({ ...doc.data() } as User);
       });
+      setAllUsers(users);
       
       setStats(prev => ({
         ...prev,
@@ -63,9 +66,17 @@ const AdminDashboard: React.FC = () => {
       }));
     });
 
+    const requestsQuery = query(collection(db, 'derivedAdminRequests'));
+    const unsubscribeRequests = onSnapshot(requestsQuery, (snapshot) => {
+      const reqs: any[] = [];
+      snapshot.forEach((d) => reqs.push({ id: d.id, ...d.data() }));
+      setRequests(reqs);
+    });
+
     return () => {
       unsubscribeUsers();
       unsubscribeActivities();
+      unsubscribeRequests();
     };
   }, []);
 
@@ -95,8 +106,21 @@ const AdminDashboard: React.FC = () => {
     ? ((stats.approvedActivities / (stats.approvedActivities + stats.rejectedActivities)) * 100).toFixed(1)
     : '0';
 
+  const approveDerived = async (id: string, uid: string) => {
+    await updateDoc(doc(db, 'users', uid), { role: 'derived-admin' });
+    await updateDoc(doc(db, 'derivedAdminRequests', id), { status: 'approved' });
+  };
+
+  const rejectDerived = async (id: string) => {
+    await updateDoc(doc(db, 'derivedAdminRequests', id), { status: 'rejected' });
+  };
+
+  const revokeDerived = async (uid: string) => {
+    await updateDoc(doc(db, 'users', uid), { role: 'faculty' });
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 fade-in">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
@@ -156,7 +180,7 @@ const AdminDashboard: React.FC = () => {
 
       {/* Secondary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white/80 backdrop-blur-md rounded-xl p-6 border border-white/20 shadow-lg">
+        <div className="rounded-xl p-6 glass-panel">
           <div className="flex items-center">
             <div className="p-2 bg-yellow-100 rounded-lg">
               <Clock className="h-6 w-6 text-yellow-600" />
@@ -168,7 +192,7 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-md rounded-xl p-6 border border-white/20 shadow-lg">
+        <div className="rounded-xl p-6 glass-panel">
           <div className="flex items-center">
             <div className="p-2 bg-red-100 rounded-lg">
               <XCircle className="h-6 w-6 text-red-600" />
@@ -180,7 +204,7 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-md rounded-xl p-6 border border-white/20 shadow-lg">
+        <div className="rounded-xl p-6 glass-panel">
           <div className="flex items-center">
             <div className="p-2 bg-indigo-100 rounded-lg">
               <Users className="h-6 w-6 text-indigo-600" />
@@ -194,8 +218,35 @@ const AdminDashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Derived Admin Requests */}
+        <div className="rounded-xl border glass-panel">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Derived Admin Requests</h2>
+            <p className="text-sm text-gray-600">Review and approve badge requests from faculty</p>
+          </div>
+          <div className="divide-y divide-gray-200">
+            {requests.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">No requests</div>
+            ) : (
+              requests.map((r) => (
+                <div key={r.id} className="p-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{r.requesterName} ({r.requesterEmail})</p>
+                    <p className="text-xs text-gray-600">Status: {r.status}</p>
+                  </div>
+                  {r.status === 'pending' && (
+                    <div className="space-x-2">
+                      <button onClick={() => approveDerived(r.id, r.requesterUid)} className="px-3 py-1 rounded-md bg-green-600 text-white text-sm">Approve</button>
+                      <button onClick={() => rejectDerived(r.id)} className="px-3 py-1 rounded-md bg-red-600 text-white text-sm">Reject</button>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
         {/* Category Distribution */}
-        <div className="bg-white/80 backdrop-blur-md rounded-xl border border-white/20 shadow-lg">
+        <div className="rounded-xl border glass-panel">
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-2">
               <BarChart3 className="h-5 w-5 text-gray-700" />
@@ -267,6 +318,46 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
               ))
+            )}
+          </div>
+        </div>
+
+        {/* Faculty Derived Admin Status */}
+        <div className="rounded-xl border glass-panel">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Faculty Derived Admin Status</h2>
+            <p className="text-sm text-gray-600">View all faculty and manage derived admin badges</p>
+          </div>
+          <div className="divide-y divide-gray-200">
+            {allUsers.filter(u => u.role === 'faculty' || u.role === 'derived-admin').length === 0 ? (
+              <div className="p-8 text-center text-gray-500">No faculty found</div>
+            ) : (
+              allUsers
+                .filter(u => u.role === 'faculty' || u.role === 'derived-admin')
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((u) => {
+                  const pendingReq = requests.find(r => r.requesterUid === u.uid && r.status === 'pending');
+                  return (
+                    <div key={u.uid} className="p-4 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{u.name} ({u.email})</p>
+                        <p className="text-xs text-gray-600">Role: {u.role}{pendingReq ? ' • Pending request' : ''}</p>
+                      </div>
+                      <div className="space-x-2">
+                        {u.role === 'derived-admin' ? (
+                          <button onClick={() => revokeDerived(u.uid)} className="px-3 py-1 rounded-md bg-red-600 text-white text-sm">Revoke Badge</button>
+                        ) : pendingReq ? (
+                          <>
+                            <button onClick={() => approveDerived(pendingReq.id, u.uid)} className="px-3 py-1 rounded-md bg-green-600 text-white text-sm">Approve</button>
+                            <button onClick={() => rejectDerived(pendingReq.id)} className="px-3 py-1 rounded-md bg-gray-600 text-white text-sm">Reject</button>
+                          </>
+                        ) : (
+                          <span className="text-xs text-gray-500">No request</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
             )}
           </div>
         </div>

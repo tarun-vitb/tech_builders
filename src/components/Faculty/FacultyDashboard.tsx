@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, CheckCircle, XCircle, MessageSquare, FileText, Users } from 'lucide-react';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { Clock, CheckCircle, XCircle, MessageSquare, FileText, Users, Shield } from 'lucide-react';
+import { collection, query, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+import { useAuth } from '../../contexts/AuthContext';
 import { Activity } from '../../types';
 import ReviewModal from './ReviewModal';
 import FileViewer from '../FileViewer';
@@ -10,6 +11,10 @@ const FacultyDashboard: React.FC = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const { user } = useAuth();
+  const [derivedKey, setDerivedKey] = useState('');
+  const [requestingBadge, setRequestingBadge] = useState(false);
+  const [badgeMessage, setBadgeMessage] = useState<string | null>(null);
 
   useEffect(() => {
     // Get all activities and sort in memory to avoid index requirement
@@ -43,6 +48,31 @@ const FacultyDashboard: React.FC = () => {
     rejected: activities.filter(a => a.status === 'rejected').length,
   };
 
+  const requestDerivedAdminBadge = async () => {
+    if (!user) return;
+    if (derivedKey.trim() !== 'vit69') {
+      setBadgeMessage('Invalid admin key.');
+      return;
+    }
+    try {
+      setRequestingBadge(true);
+      setBadgeMessage(null);
+      await addDoc(collection(db, 'derivedAdminRequests'), {
+        requesterUid: user.uid,
+        requesterName: user.name,
+        requesterEmail: user.email,
+        createdAt: serverTimestamp(),
+        status: 'pending',
+      });
+      setDerivedKey('');
+      setBadgeMessage('Request submitted. Awaiting admin approval.');
+    } catch (e: any) {
+      setBadgeMessage(e?.message || 'Failed to submit request');
+    } finally {
+      setRequestingBadge(false);
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'approved':
@@ -66,16 +96,40 @@ const FacultyDashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 fade-in">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Faculty Dashboard</h1>
         <p className="text-gray-600">Review and manage student activities</p>
+        {/* Derived Admin Badge Request */}
+        <div className="mt-4 rounded-xl border glass-panel p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Shield className="h-5 w-5 text-indigo-600" />
+            <h2 className="text-sm font-semibold text-gray-900">Derived Admin Badge</h2>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input
+              type="password"
+              value={derivedKey}
+              onChange={(e) => setDerivedKey(e.target.value)}
+              placeholder="Enter Admin Key"
+              className="flex-1 rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            />
+            <button
+              onClick={requestDerivedAdminBadge}
+              disabled={requestingBadge}
+              className="px-4 py-2 rounded-lg text-white bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 gradient-button disabled:opacity-50"
+            >
+              {requestingBadge ? 'Requesting...' : 'Request Badge'}
+            </button>
+          </div>
+          {badgeMessage && <p className="text-xs text-gray-600 mt-2">{badgeMessage}</p>}
+        </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white/80 backdrop-blur-md rounded-xl p-6 border border-white/20 shadow-lg">
+        <div className="rounded-xl p-6 glass-panel">
           <div className="flex items-center">
             <div className="p-2 bg-blue-100 rounded-lg">
               <FileText className="h-6 w-6 text-blue-600" />
@@ -87,7 +141,7 @@ const FacultyDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-md rounded-xl p-6 border border-white/20 shadow-lg">
+        <div className="rounded-xl p-6 glass-panel">
           <div className="flex items-center">
             <div className="p-2 bg-yellow-100 rounded-lg">
               <Clock className="h-6 w-6 text-yellow-600" />
@@ -99,7 +153,7 @@ const FacultyDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-md rounded-xl p-6 border border-white/20 shadow-lg">
+        <div className="rounded-xl p-6 glass-panel">
           <div className="flex items-center">
             <div className="p-2 bg-green-100 rounded-lg">
               <CheckCircle className="h-6 w-6 text-green-600" />
@@ -111,7 +165,7 @@ const FacultyDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-md rounded-xl p-6 border border-white/20 shadow-lg">
+        <div className="rounded-xl p-6 glass-panel">
           <div className="flex items-center">
             <div className="p-2 bg-red-100 rounded-lg">
               <XCircle className="h-6 w-6 text-red-600" />
@@ -147,7 +201,7 @@ const FacultyDashboard: React.FC = () => {
       </div>
 
       {/* Activities List */}
-      <div className="bg-white/80 backdrop-blur-md rounded-xl border border-white/20 shadow-lg">
+      <div className="rounded-xl border glass-panel">
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Student Submissions</h2>
         </div>

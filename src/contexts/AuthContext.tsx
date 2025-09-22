@@ -18,6 +18,10 @@ interface AuthContextType {
     role?: UserRole,
     profileExtras?: Partial<Pick<User, 'rollNo' | 'facultyId' | 'branch' | 'accreditation'>>
   ) => Promise<void>;
+  signInExistingWithGoogle: (
+    role: UserRole,
+    identifier?: string
+  ) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -103,6 +107,50 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Sign-in flow that only allows existing users and verifies role/ID
+  const signInExistingWithGoogle = async (role: UserRole, identifier?: string) => {
+    try {
+      const cred = await signInWithPopup(auth, googleProvider);
+      const firebaseUser = cred.user;
+
+      const userRef = doc(db, 'users', firebaseUser.uid);
+      const existing = await getDoc(userRef);
+
+      if (!existing.exists()) {
+        throw new Error('Account not found. Please create an account first.');
+      }
+
+      const existingUser = existing.data() as User;
+
+      // Verify role
+      if (existingUser.role !== role) {
+        throw new Error('Role mismatch for this account.');
+      }
+
+      // Verify identifier when relevant
+      if (role === 'student' && identifier && existingUser.rollNo && existingUser.rollNo !== identifier) {
+        throw new Error('Roll number does not match.');
+      }
+      if (role === 'faculty' && identifier && existingUser.facultyId && existingUser.facultyId !== identifier) {
+        throw new Error('Faculty ID does not match.');
+      }
+
+      // Merge latest Google profile basics but do not change role/ids
+      const updated: User = {
+        ...existingUser,
+        name: firebaseUser.displayName || existingUser.name,
+        email: firebaseUser.email || existingUser.email,
+        photoURL: firebaseUser.photoURL || existingUser.photoURL,
+      };
+
+      await setDoc(userRef, updated, { merge: true });
+      setUser(updated);
+    } catch (error) {
+      console.error('Existing sign in error:', error);
+      throw error;
+    }
+  };
+
   const signOut = async () => {
     try {
       await firebaseSignOut(auth);
@@ -116,6 +164,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     loading,
     signInWithGoogle,
+    signInExistingWithGoogle,
     signOut
   };
 

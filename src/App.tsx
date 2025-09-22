@@ -3,7 +3,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginScreen from './components/Auth/LoginScreen';
 import CreateAccount from './components/Auth/CreateAccount';
+import SignIn from './components/Auth/SignIn';
 import Header from './components/Layout/Header';
+import ProfilePage from './components/Profile/ProfilePage';
 import StudentDashboard from './components/Student/StudentDashboard';
 import FacultyDashboard from './components/Faculty/FacultyDashboard';
 import AdminDashboard from './components/Admin/AdminDashboard';
@@ -29,6 +31,7 @@ const AppContent: React.FC = () => {
         <Routes>
           <Route path="/" element={<LoginScreen />} />
           <Route path="/create-account" element={<CreateAccount />} />
+          <Route path="/sign-in" element={<SignIn />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
@@ -54,6 +57,7 @@ const AppContent: React.FC = () => {
               )
             } 
           />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
