@@ -76,7 +76,7 @@ const LoginScreen: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="relative overflow-hidden rounded-2xl shadow-lg border border-white/30">
           <img
-            src="/college-hero.jpg"
+            src="/college-hero.jpg.jfif"
             alt="College campus"
             className="w-full h-64 sm:h-80 lg:h-[28rem] object-cover"
           />
