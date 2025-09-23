@@ -9,6 +9,7 @@ import ProfilePage from './components/Profile/ProfilePage';
 import StudentDashboard from './components/Student/StudentDashboard';
 import FacultyDashboard from './components/Faculty/FacultyDashboard';
 import AdminDashboard from './components/Admin/AdminDashboard';
+import AdminRequests from './components/Admin/AdminRequests';
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
@@ -58,6 +59,9 @@ const AppContent: React.FC = () => {
             } 
           />
           <Route path="/profile" element={<ProfilePage />} />
+          {user.role === 'admin' && (
+            <Route path="/admin/requests" element={<AdminRequests />} />
+          )}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

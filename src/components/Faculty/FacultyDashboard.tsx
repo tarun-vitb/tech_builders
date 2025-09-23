@@ -5,7 +5,6 @@ import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Activity } from '../../types';
 import ReviewModal from './ReviewModal';
-import FileViewer from '../FileViewer';
 
 const FacultyDashboard: React.FC = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -66,8 +65,9 @@ const FacultyDashboard: React.FC = () => {
       });
       setDerivedKey('');
       setBadgeMessage('Request submitted. Awaiting admin approval.');
-    } catch (e: any) {
-      setBadgeMessage(e?.message || 'Failed to submit request');
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to submit request';
+      setBadgeMessage(message);
     } finally {
       setRequestingBadge(false);
     }

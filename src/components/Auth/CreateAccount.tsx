@@ -30,9 +30,7 @@ const CreateAccount: React.FC = () => {
   const [facultyId, setFacultyId] = useState('');
   const [facultyBranch, setFacultyBranch] = useState('');
 
-  // Admin form state
-  const [adminName, setAdminName] = useState('');
-  const [accreditation, setAccreditation] = useState<'nba' | 'naac' | ''>('');
+  // Admin account creation disabled
 
   // Role selection
   const [selectedRole, setSelectedRole] = useState<'student' | 'faculty' | 'admin' | ''>('');
@@ -48,7 +46,6 @@ const CreateAccount: React.FC = () => {
             {([
               { key: 'student', label: 'Student' },
               { key: 'faculty', label: 'Faculty' },
-              { key: 'admin', label: 'Admin' },
             ] as const).map(({ key, label }) => (
               <button
                 key={key}
@@ -67,7 +64,7 @@ const CreateAccount: React.FC = () => {
 
         {/* Conditional forms */}
         {selectedRole === '' && (
-          <p className="text-gray-600 mb-6 text-center">Please choose whether you are a Student, Faculty, or Admin to continue.</p>
+          <p className="text-gray-600 mb-6 text-center">Please choose whether you are a Student or Faculty to continue.</p>
         )}
 
         {selectedRole === 'student' && (
@@ -166,42 +163,7 @@ const CreateAccount: React.FC = () => {
           </div>
         )}
 
-        {selectedRole === 'admin' && (
-          <div className="bg-white/90 backdrop-blur-md border border-gray-100 rounded-xl p-6 shadow-sm w-full max-w-xl mx-auto">
-            <h2 className="text-xl font-semibold text-indigo-700 mb-4">Admin</h2>
-            <div className="space-y-4">
-              <input
-                type="text"
-                value={adminName}
-                onChange={(e) => setAdminName(e.target.value)}
-                placeholder="Name"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              />
-              <select
-                value={accreditation}
-                onChange={(e) => setAccreditation(e.target.value as 'nba' | 'naac')}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              >
-                <option value="" disabled>
-                  Select Accreditation
-                </option>
-                <option value="nba">NBA</option>
-                <option value="naac">NAAC</option>
-              </select>
-
-              <button
-                onClick={() =>
-                  signInWithGoogle('admin', {
-                    accreditation: accreditation || undefined,
-                  }).catch(() => {})
-                }
-                className="w-full rounded-lg bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white font-semibold py-2.5 shadow-sm hover:shadow-md transition-all"
-              >
-                Login as Admin (Google)
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Admin account creation is disabled intentionally. Use Sign In with admin key. */}
       </div>
     </div>
   );

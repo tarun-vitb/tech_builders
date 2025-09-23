@@ -62,6 +62,15 @@ const Header: React.FC = () => {
                   )}
                 </div>
               </div>
+              {user.role === 'admin' && (
+                <button
+                  onClick={() => navigate('/admin/requests')}
+                  className="px-3 py-1.5 text-sm font-medium rounded-lg border border-indigo-200 bg-white hover:bg-indigo-50 text-indigo-700 shadow-sm transition-all"
+                  title="Derived Admin Requests"
+                >
+                  Requests
+                </button>
+              )}
               <button
                 onClick={() => navigate('/profile')}
                 className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 shadow-sm transition-all"

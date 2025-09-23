@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Upload, FileText, Image, AlertCircle } from 'lucide-react';
 import { collection, addDoc, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
-import { getSupabase } from '../../config/supabaseClient';
+// import { getSupabase } from '../../config/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface UploadActivityModalProps {
