@@ -89,13 +89,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             uid: firebaseUser.uid,
             name: firebaseUser.displayName || 'Unknown User',
             email: firebaseUser.email || '',
-            role: role || 'student',
+            role: role === 'admin' ? 'student' : (role || 'student'),
             photoURL: firebaseUser.photoURL || undefined,
           };
 
       const updated: User = {
         ...baseUser,
-        role: role || baseUser.role,
+        // Prevent creating or elevating to admin here
+        role: role === 'admin' ? baseUser.role : (role || baseUser.role),
         ...(profileExtras || {}),
       } as User;
 

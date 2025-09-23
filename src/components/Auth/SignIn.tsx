@@ -8,15 +8,23 @@ const SignIn: React.FC = () => {
   const [rollNo, setRollNo] = useState('');
   const [facultyId, setFacultyId] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [adminKey, setAdminKey] = useState('');
 
   const handleSignIn = async () => {
     setError(null);
     try {
       if (selectedRole === '') return;
-      const identifier = selectedRole === 'student' ? rollNo : selectedRole === 'faculty' ? facultyId : undefined;
+      if (selectedRole === 'admin') {
+        if (adminKey.trim() !== 'vit69') {
+          setError('Invalid admin key.');
+          return;
+        }
+      }
+      const identifier = selectedRole === 'student' ? rollNo : selectedRole === 'faculty' ? facultyId : adminKey || undefined;
       await signInExistingWithGoogle(selectedRole, identifier);
-    } catch (e: any) {
-      setError(e?.message || 'Sign in failed');
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Sign in failed';
+      setError(message);
     }
   };
 
@@ -96,6 +104,13 @@ const SignIn: React.FC = () => {
         {selectedRole === 'admin' && (
           <div className="bg-white/90 backdrop-blur-md border border-gray-100 rounded-xl p-6 shadow-sm w-full max-w-xl mx-auto">
             <div className="space-y-4">
+              <input
+                type="password"
+                value={adminKey}
+                onChange={(e) => setAdminKey(e.target.value)}
+                placeholder="Enter Admin Key"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              />
               <button
                 onClick={handleSignIn}
                 className="w-full rounded-lg bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white font-semibold py-2.5 shadow-sm hover:shadow-md transition-all"

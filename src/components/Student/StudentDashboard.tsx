@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, FileText, Clock, CheckCircle, XCircle, Download, Upload } from 'lucide-react';
-import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Activity } from '../../types';
 import UploadActivityModal from './UploadActivityModal';
 import { generatePDFPortfolio } from '../../utils/pdfGenerator';
-import FileViewer from '../FileViewer';
 
 const StudentDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -114,8 +113,9 @@ const StudentDashboard: React.FC = () => {
       setComplaintText('');
       setComplaintFacultyId('');
       setComplaintMessage('Complaint submitted to admin successfully.');
-    } catch (e: any) {
-      setComplaintMessage(e?.message || 'Failed to submit complaint.');
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to submit complaint.';
+      setComplaintMessage(message);
     } finally {
       setComplaintSending(false);
     }

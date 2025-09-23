@@ -3,8 +3,30 @@ import { BarChart3, Users, FileText, Clock, CheckCircle, XCircle, TrendingUp } f
 import { collection, query, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Activity, User, Stats } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
+
+interface DerivedAdminRequest {
+  id: string;
+  requesterUid: string;
+  requesterName: string;
+  requesterEmail: string;
+  status: 'pending' | 'approved' | 'rejected';
+}
+
+interface Complaint {
+  id: string;
+  studentUid: string;
+  studentName: string;
+  studentEmail: string;
+  facultyId: string | null;
+  message: string;
+  status: 'open' | 'resolved';
+  adminRemarks?: string;
+  createdAt?: { toDate?: () => Date } | Date;
+}
 
 const AdminDashboard: React.FC = () => {
+  const { user } = useAuth();
   const [stats, setStats] = useState<Stats>({
     totalStudents: 0,
     totalActivities: 0,
@@ -15,8 +37,17 @@ const AdminDashboard: React.FC = () => {
   });
   const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
   const [categoryData, setCategoryData] = useState<{[key: string]: number}>({});
-  const [requests, setRequests] = useState<any[]>([]);
+  const [requests, setRequests] = useState<DerivedAdminRequest[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [adminReplyMap, setAdminReplyMap] = useState<Record<string, string>>({});
+
+  const toJsDate = (value: Complaint['createdAt']): Date => {
+    if (!value) return new Date(0);
+    if (value instanceof Date) return value;
+    const maybe = (value as { toDate?: () => Date }).toDate?.();
+    return maybe || new Date(0);
+  };
 
   useEffect(() => {
     // Listen to users collection
@@ -68,15 +99,24 @@ const AdminDashboard: React.FC = () => {
 
     const requestsQuery = query(collection(db, 'derivedAdminRequests'));
     const unsubscribeRequests = onSnapshot(requestsQuery, (snapshot) => {
-      const reqs: any[] = [];
-      snapshot.forEach((d) => reqs.push({ id: d.id, ...d.data() }));
+      const reqs: DerivedAdminRequest[] = [];
+      snapshot.forEach((d) => reqs.push({ id: d.id, ...(d.data() as Omit<DerivedAdminRequest, 'id'>) }));
       setRequests(reqs);
+    });
+
+    // Listen to student complaints
+    const complaintsQuery = query(collection(db, 'complaints'));
+    const unsubscribeComplaints = onSnapshot(complaintsQuery, (snapshot) => {
+      const list: Complaint[] = [];
+      snapshot.forEach((d) => list.push({ id: d.id, ...(d.data() as Omit<Complaint, 'id'>) }));
+      setComplaints(list);
     });
 
     return () => {
       unsubscribeUsers();
       unsubscribeActivities();
       unsubscribeRequests();
+      unsubscribeComplaints();
     };
   }, []);
 
@@ -117,6 +157,14 @@ const AdminDashboard: React.FC = () => {
 
   const revokeDerived = async (uid: string) => {
     await updateDoc(doc(db, 'users', uid), { role: 'faculty' });
+  };
+
+  const grantDerived = async (uid: string) => {
+    await updateDoc(doc(db, 'users', uid), { role: 'derived-admin' });
+  };
+
+  const updateComplaint = async (id: string, data: Partial<Pick<Complaint, 'status' | 'adminRemarks'>>) => {
+    await updateDoc(doc(db, 'complaints', id), data);
   };
 
   return (
@@ -218,7 +266,8 @@ const AdminDashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Derived Admin Requests */}
+        {/* Derived Admin Requests (Admins only) */}
+        {user?.role === 'admin' && (
         <div className="rounded-xl border glass-panel">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">Derived Admin Requests</h2>
@@ -245,6 +294,7 @@ const AdminDashboard: React.FC = () => {
             )}
           </div>
         </div>
+        )}
         {/* Category Distribution */}
         <div className="rounded-xl border glass-panel">
           <div className="p-6 border-b border-gray-200">
@@ -350,14 +400,69 @@ const AdminDashboard: React.FC = () => {
                           <>
                             <button onClick={() => approveDerived(pendingReq.id, u.uid)} className="px-3 py-1 rounded-md bg-green-600 text-white text-sm">Approve</button>
                             <button onClick={() => rejectDerived(pendingReq.id)} className="px-3 py-1 rounded-md bg-gray-600 text-white text-sm">Reject</button>
+                            <button onClick={() => grantDerived(u.uid)} className="px-3 py-1 rounded-md bg-indigo-600 text-white text-sm">Grant Badge</button>
                           </>
                         ) : (
-                          <span className="text-xs text-gray-500">No request</span>
+                          <>
+                            <span className="text-xs text-gray-500 mr-2">No request</span>
+                            <button onClick={() => grantDerived(u.uid)} className="px-3 py-1 rounded-md bg-indigo-600 text-white text-sm">Grant Badge</button>
+                          </>
                         )}
                       </div>
                     </div>
                   );
                 })
+            )}
+          </div>
+        </div>
+
+        {/* Student Complaints and Admin Remarks */}
+        <div className="rounded-xl border glass-panel">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Student Complaints</h2>
+            <p className="text-sm text-gray-600">Review bias complaints and add admin remarks</p>
+          </div>
+          <div className="divide-y divide-gray-200">
+            {complaints.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">No complaints</div>
+            ) : (
+              complaints
+                .sort((a, b) => toJsDate(b.createdAt).getTime() - toJsDate(a.createdAt).getTime())
+                .map((c) => (
+                  <div key={c.id} className="p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{c.studentName} ({c.studentEmail})</p>
+                        <p className="text-xs text-gray-600">Faculty ID: {c.facultyId || 'N/A'} • Status: {c.status}</p>
+                      </div>
+                      <span className="text-xs text-gray-500">{c.createdAt && toJsDate(c.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    <p className="text-sm text-gray-800">{c.message}</p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={adminReplyMap[c.id] ?? c.adminRemarks ?? ''}
+                        onChange={(e) => setAdminReplyMap(prev => ({ ...prev, [c.id]: e.target.value }))}
+                        placeholder="Add admin remarks..."
+                        className="flex-1 rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      />
+                      <button
+                        onClick={() => updateComplaint(c.id, { adminRemarks: adminReplyMap[c.id] ?? '' })}
+                        className="px-3 py-2 rounded-md bg-blue-600 text-white text-sm"
+                      >
+                        Save
+                      </button>
+                      {c.status !== 'resolved' && (
+                        <button
+                          onClick={() => updateComplaint(c.id, { status: 'resolved', adminRemarks: adminReplyMap[c.id] ?? c.adminRemarks })}
+                          className="px-3 py-2 rounded-md bg-green-600 text-white text-sm"
+                        >
+                          Resolve
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
             )}
           </div>
         </div>
