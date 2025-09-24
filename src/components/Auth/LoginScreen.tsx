@@ -85,8 +85,8 @@ const LoginScreen: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="relative overflow-hidden rounded-2xl shadow-lg border border-white/30 glass-panel">
           <img
-            src="/college-hero.jpg.jfif"
-            alt="College campus"
+            src="/tech-collaboration-hero.jpg"
+            alt="Students collaborating on technology projects"
             className="w-full h-64 sm:h-80 lg:h-[28rem] object-cover"
           />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4 sm:p-6 lg:p-8">
@@ -95,6 +95,16 @@ const LoginScreen: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Features Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-6">
+        <h2 className="text-3xl sm:text-4xl font-bold text-center bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+          Features
+        </h2>
+        <p className="text-center text-gray-600 max-w-2xl mx-auto">
+          Discover the powerful tools and capabilities that make our Student Activity Hub the perfect platform for showcasing your achievements.
+        </p>
       </div>
 
       {/* Features as Cards */}

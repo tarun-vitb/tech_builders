@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 const SignIn: React.FC = () => {
   const { signInExistingWithGoogle } = useAuth();
 
-  const [selectedRole, setSelectedRole] = useState<'student' | 'faculty' | 'admin' | ''>('');
+  const [selectedRole, setSelectedRole] = useState<'student' | 'faculty' | 'admin' | 'derived-admin' | ''>('');
   const [rollNo, setRollNo] = useState('');
   const [facultyId, setFacultyId] = useState('');
   const [error, setError] = useState<string | null>(null);

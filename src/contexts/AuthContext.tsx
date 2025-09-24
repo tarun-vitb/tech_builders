@@ -9,7 +9,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, googleProvider, db } from '../config/firebase';
 import { User } from '../types';
 
-type UserRole = 'student' | 'faculty' | 'admin';
+type UserRole = 'student' | 'faculty' | 'admin' | 'derived-admin';
 
 interface AuthContextType {
   user: User | null;
@@ -119,13 +119,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const userRef = doc(db, 'users', firebaseUser.uid);
       const existing = await getDoc(userRef);
 
+      // Special handling for admin role with correct admin key
+      if (role === 'admin' && identifier === 'vit69') {
+        if (!existing.exists()) {
+          // Create admin user if doesn't exist and correct key is provided
+          const newAdminUser: User = {
+            uid: firebaseUser.uid,
+            name: firebaseUser.displayName || 'Admin User',
+            email: firebaseUser.email || '',
+            role: 'admin',
+            photoURL: firebaseUser.photoURL || undefined
+          };
+          
+          await setDoc(userRef, newAdminUser);
+          setUser(newAdminUser);
+          return;
+        } else {
+          // Update existing user to admin role if correct key is provided
+          const existingUser = existing.data() as User;
+          const updatedUser: User = {
+            ...existingUser,
+            role: 'admin',
+            name: firebaseUser.displayName || existingUser.name,
+            email: firebaseUser.email || existingUser.email,
+            photoURL: firebaseUser.photoURL || existingUser.photoURL,
+          };
+          
+          await setDoc(userRef, updatedUser, { merge: true });
+          setUser(updatedUser);
+          return;
+        }
+      }
+
       if (!existing.exists()) {
         throw new Error('Account not found. Please create an account first.');
       }
 
       const existingUser = existing.data() as User;
 
-      // Verify role
+      // Verify role for non-admin users
       if (existingUser.role !== role) {
         throw new Error('Role mismatch for this account.');
       }

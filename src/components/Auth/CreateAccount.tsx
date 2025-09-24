@@ -33,7 +33,7 @@ const CreateAccount: React.FC = () => {
   // Admin account creation disabled
 
   // Role selection
-  const [selectedRole, setSelectedRole] = useState<'student' | 'faculty' | 'admin' | ''>('');
+  const [selectedRole, setSelectedRole] = useState<'student' | 'faculty' | 'admin' | 'derived-admin' | ''>('');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">

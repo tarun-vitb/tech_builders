@@ -51,7 +51,7 @@ const AppContent: React.FC = () => {
                 <StudentDashboard />
               ) : user.role === 'faculty' ? (
                 <FacultyDashboard />
-              ) : user.role === 'admin' ? (
+              ) : (user.role === 'admin' || user.role === 'derived-admin') ? (
                 <AdminDashboard />
               ) : (
                 <Navigate to="/login" replace />
@@ -59,7 +59,7 @@ const AppContent: React.FC = () => {
             } 
           />
           <Route path="/profile" element={<ProfilePage />} />
-          {user.role === 'admin' && (
+          {(user.role === 'admin' || user.role === 'derived-admin') && (
             <Route path="/admin/requests" element={<AdminRequests />} />
           )}
           <Route path="*" element={<Navigate to="/" replace />} />

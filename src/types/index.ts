@@ -2,7 +2,7 @@ export interface User {
   uid: string;
   name: string;
   email: string;
-  role: 'student' | 'faculty' | 'admin';
+  role: 'student' | 'faculty' | 'admin' | 'derived-admin';
   photoURL?: string;
   // Optional profile fields
   rollNo?: string;
