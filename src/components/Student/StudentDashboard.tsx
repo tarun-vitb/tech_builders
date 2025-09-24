@@ -10,6 +10,7 @@ import { generatePDFPortfolio } from '../../utils/pdfGenerator';
 const StudentDashboard: React.FC = () => {
   const { user } = useAuth();
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [latestAlert, setLatestAlert] = useState<{ id: string; message: string; createdAt?: { toDate?: () => Date } | Date } | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [complaintText, setComplaintText] = useState('');
@@ -42,6 +43,26 @@ const StudentDashboard: React.FC = () => {
 
     return unsubscribe;
   }, [user]);
+
+  // Listen for latest broadcast alert
+  useEffect(() => {
+    const alertsQ = query(collection(db, 'alerts'));
+    const unsub = onSnapshot(alertsQ, (snapshot) => {
+      let recent: { id: string; message: string; createdAt?: { toDate?: () => Date } | Date } | null = null;
+      snapshot.forEach((doc) => {
+        const data = { id: doc.id, ...(doc.data() as any) };
+        if (!recent) {
+          recent = data;
+          return;
+        }
+        const a = (data.createdAt as any)?.toDate?.() || new Date(0);
+        const b = (recent.createdAt as any)?.toDate?.() || new Date(0);
+        if (a.getTime() > b.getTime()) recent = data;
+      });
+      setLatestAlert(recent);
+    });
+    return unsub;
+  }, []);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -123,6 +144,22 @@ const StudentDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6 fade-in">
+      {latestAlert && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-red-100 rounded-md">
+              <XCircle className="h-5 w-5 text-red-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-red-800">Important Announcement</p>
+              <p className="text-sm text-red-700 mt-1 whitespace-pre-wrap">{latestAlert.message}</p>
+              <p className="text-xs text-red-500 mt-2">
+                {(latestAlert.createdAt as any)?.toDate?.() ? new Date((latestAlert.createdAt as any).toDate()).toLocaleString() : ''}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

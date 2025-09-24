@@ -14,6 +14,9 @@ const FacultyDashboard: React.FC = () => {
   const [derivedKey, setDerivedKey] = useState('');
   const [requestingBadge, setRequestingBadge] = useState(false);
   const [badgeMessage, setBadgeMessage] = useState<string | null>(null);
+  const [alertText, setAlertText] = useState('');
+  const [sendingAlert, setSendingAlert] = useState(false);
+  const [alertFeedback, setAlertFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     // Use department if available, otherwise fall back to branch for backward compatibility
@@ -85,6 +88,34 @@ const FacultyDashboard: React.FC = () => {
     }
   };
 
+  const broadcastAlertToStudents = async () => {
+    if (!user) return;
+    const message = alertText.trim();
+    if (!message) {
+      setAlertFeedback('Please enter a message to broadcast.');
+      return;
+    }
+    try {
+      setSendingAlert(true);
+      setAlertFeedback(null);
+      await addDoc(collection(db, 'alerts'), {
+        message,
+        scope: 'all',
+        createdAt: serverTimestamp(),
+        createdByUid: user.uid,
+        createdByName: user.name,
+        createdByEmail: user.email,
+      });
+      setAlertText('');
+      setAlertFeedback('Alert sent to all students.');
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to send alert';
+      setAlertFeedback(message);
+    } finally {
+      setSendingAlert(false);
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'approved':
@@ -145,6 +176,35 @@ const FacultyDashboard: React.FC = () => {
             </button>
           </div>
           {badgeMessage && <p className="text-xs text-gray-600 mt-2">{badgeMessage}</p>}
+        </div>
+
+        {/* Broadcast Alert to Students */}
+        <div className="mt-4 rounded-xl border glass-panel p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Shield className="h-5 w-5 text-red-600" />
+            <h2 className="text-sm font-semibold text-gray-900">Broadcast Alert to Students</h2>
+          </div>
+          <div className="space-y-3">
+            <textarea
+              value={alertText}
+              onChange={(e) => setAlertText(e.target.value)}
+              placeholder="Type an important announcement for all students..."
+              rows={3}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-200"
+            />
+            <div className="flex items-center gap-3">
+              <button
+                onClick={broadcastAlertToStudents}
+                disabled={sendingAlert || !alertText.trim()}
+                className="px-4 py-2 rounded-lg text-white bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 disabled:opacity-50"
+              >
+                {sendingAlert ? 'Sending...' : 'Send Alert'}
+              </button>
+              {alertFeedback && (
+                <p className="text-xs text-gray-600">{alertFeedback}</p>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
