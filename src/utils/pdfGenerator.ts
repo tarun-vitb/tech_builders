@@ -28,13 +28,15 @@ export const generatePDFPortfolio = async (user: User, activities: Activity[]) =
   pdf.line(margin, currentY, pageWidth - margin, currentY);
   currentY += 20;
 
-  // Add activities
+  // Add activities (sorted/grouped by category)
   pdf.setFontSize(18);
   pdf.setFont("helvetica", "bold");
   pdf.text("Approved Activities", margin, currentY);
   currentY += 20;
 
-  activities.forEach((activity, index) => {
+  const activitiesSorted = [...activities].sort((a, b) => a.category.localeCompare(b.category));
+
+  activitiesSorted.forEach((activity, index) => {
     // Check if we need a new page
     if (currentY > pageHeight - 60) {
       pdf.addPage();
@@ -47,12 +49,39 @@ export const generatePDFPortfolio = async (user: User, activities: Activity[]) =
     pdf.text(`${index + 1}. ${activity.title}`, margin, currentY);
     currentY += 10;
 
-    // Category and date
+    // Category and created date
     pdf.setFontSize(10);
     pdf.setFont("helvetica", "normal");
     pdf.text(`Category: ${activity.category}`, margin + 10, currentY);
     pdf.text(`Date: ${new Date(activity.createdAt?.toDate()).toLocaleDateString()}`, pageWidth - margin - 50, currentY);
     currentY += 10;
+
+    // Duration (Start and End Dates)
+    const formatDate = (d?: string) => {
+      if (!d) return 'N/A';
+      const parsed = new Date(d);
+      return isNaN(parsed.getTime()) ? d : parsed.toLocaleDateString();
+    };
+    pdf.text(`Start Date: ${formatDate(activity.startDate)}`, margin + 10, currentY);
+    pdf.text(`End Date: ${formatDate(activity.endDate)}`, pageWidth - margin - 60, currentY);
+    currentY += 10;
+
+    // Internship-specific details
+    if (activity.category === 'Internship') {
+      const stipend = activity.stipend ? activity.stipend : 'N/A';
+      const company = activity.companyWorked ? activity.companyWorked : 'N/A';
+      const city = activity.city ? activity.city : 'N/A';
+      pdf.setFont("helvetica", "italic");
+      pdf.text(`Internship Details`, margin + 10, currentY);
+      currentY += 6;
+      pdf.setFont("helvetica", "normal");
+      pdf.text(`Company: ${company}`, margin + 12, currentY);
+      currentY += 5;
+      pdf.text(`City: ${city}`, margin + 12, currentY);
+      currentY += 5;
+      pdf.text(`Stipend: ${stipend}`, margin + 12, currentY);
+      currentY += 8;
+    }
 
     // Description
     pdf.setFontSize(10);
@@ -73,7 +102,7 @@ export const generatePDFPortfolio = async (user: User, activities: Activity[]) =
     currentY += 10;
 
     // Add a light line separator between activities
-    if (index < activities.length - 1) {
+    if (index < activitiesSorted.length - 1) {
       pdf.setDrawColor(200, 200, 200);
       pdf.setLineWidth(0.1);
       pdf.line(margin + 10, currentY, pageWidth - margin - 10, currentY);

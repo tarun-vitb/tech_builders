@@ -16,13 +16,23 @@ const FacultyDashboard: React.FC = () => {
   const [badgeMessage, setBadgeMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    // Get all activities and sort in memory to avoid index requirement
+    if (!user?.department) {
+      console.warn('Faculty user has no department assigned');
+      setActivities([]);
+      return;
+    }
+
+    // Get all activities and filter by department in memory
     const q = query(collection(db, 'activities'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const activitiesData: Activity[] = [];
       snapshot.forEach((doc) => {
-        activitiesData.push({ id: doc.id, ...doc.data() } as Activity);
+        const activity = { id: doc.id, ...doc.data() } as Activity;
+        // Only show activities from the same department
+        if (activity.studentDepartment === user.department) {
+          activitiesData.push(activity);
+        }
       });
       // Sort by createdAt in descending order in memory
       activitiesData.sort((a, b) => {
@@ -34,7 +44,7 @@ const FacultyDashboard: React.FC = () => {
     });
 
     return unsubscribe;
-  }, []);
+  }, [user?.department]);
 
   const filteredActivities = activities.filter(activity => 
     filter === 'all' ? true : activity.status === filter
@@ -101,6 +111,15 @@ const FacultyDashboard: React.FC = () => {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Faculty Dashboard</h1>
         <p className="text-gray-600">Review and manage student activities</p>
+        {user?.department ? (
+          <p className="text-sm text-blue-600 font-medium mt-1">
+            Department: {user.department}
+          </p>
+        ) : (
+          <p className="text-sm text-red-600 font-medium mt-1">
+            ⚠️ No department assigned. Please contact admin to assign your department.
+          </p>
+        )}
         {/* Derived Admin Badge Request */}
         <div className="mt-4 rounded-xl border glass-panel p-4">
           <div className="flex items-center gap-2 mb-3">

@@ -8,6 +8,7 @@ export interface User {
   rollNo?: string;
   facultyId?: string;
   branch?: string;
+  department?: string; // Department for both students and faculty
   accreditation?: 'nba' | 'naac';
 }
 
@@ -15,9 +16,17 @@ export interface Activity {
   id: string;
   studentId: string;
   studentName: string;
+  studentDepartment?: string; // Department of the student who submitted
   title: string;
   description: string;
   category: string;
+  // Optional date range for the activity/event
+  startDate?: string; // YYYY-MM-DD
+  endDate?: string;   // YYYY-MM-DD
+  // Optional Internship-specific fields
+  stipend?: string;
+  companyWorked?: string;
+  city?: string;
   fileId?: string; // Reference to file document in Firestore
   fileUrl?: string; // Legacy field for backward compatibility
   fileName: string;

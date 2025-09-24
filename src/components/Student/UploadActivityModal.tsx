@@ -20,6 +20,7 @@ const CATEGORIES = [
   'Research Project',
   'Competition',
   'Workshop/Training',
+  'Internship',
   'Other'
 ];
 
@@ -28,7 +29,12 @@ const UploadActivityModal: React.FC<UploadActivityModalProps> = ({ isOpen, onClo
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    category: ''
+    category: '',
+    startDate: '',
+    endDate: '',
+    stipend: '',
+    companyWorked: '',
+    city: ''
   });
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -79,6 +85,16 @@ const UploadActivityModal: React.FC<UploadActivityModalProps> = ({ isOpen, onClo
       return;
     }
 
+    // Basic validation: if dates provided, endDate should not be before startDate
+    if (formData.startDate && formData.endDate) {
+      const start = new Date(formData.startDate);
+      const end = new Date(formData.endDate);
+      if (end < start) {
+        setError('Ending date cannot be before starting date');
+        return;
+      }
+    }
+
     setIsUploading(true);
     setError('');
     setUploadProgress(0);
@@ -114,9 +130,15 @@ const UploadActivityModal: React.FC<UploadActivityModalProps> = ({ isOpen, onClo
         const activityData = {
           studentId: user.uid,
           studentName: user.name || user.email || '',
+          studentDepartment: user.department || null, // Include student's department
           title: formData.title.trim(),
           description: formData.description.trim(),
           category: formData.category,
+          startDate: formData.startDate || null,
+          endDate: formData.endDate || null,
+          stipend: formData.category === 'Internship' && formData.stipend ? formData.stipend : null,
+          companyWorked: formData.category === 'Internship' && formData.companyWorked ? formData.companyWorked : null,
+          city: formData.category === 'Internship' && formData.city ? formData.city : null,
           fileId: fileDoc.id, // Reference to the file document
           fileName: file.name,
           fileType: file.type,
@@ -129,7 +151,7 @@ const UploadActivityModal: React.FC<UploadActivityModalProps> = ({ isOpen, onClo
         setUploadProgress(100);
 
         // Reset form and close modal
-        setFormData({ title: '', description: '', category: '' });
+        setFormData({ title: '', description: '', category: '', startDate: '', endDate: '', stipend: '', companyWorked: '', city: '' });
         setFile(null);
         setIsUploading(false);
         onClose();
@@ -183,7 +205,7 @@ const UploadActivityModal: React.FC<UploadActivityModalProps> = ({ isOpen, onClo
 
   const handleClose = () => {
     if (!isUploading) {
-      setFormData({ title: '', description: '', category: '' });
+      setFormData({ title: '', description: '', category: '', startDate: '', endDate: '', stipend: '', companyWorked: '', city: '' });
       setFile(null);
       setError('');
       setUploadProgress(0);
@@ -237,6 +259,83 @@ const UploadActivityModal: React.FC<UploadActivityModalProps> = ({ isOpen, onClo
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-2">
+                  Starting Date
+                </label>
+                <input
+                  type="date"
+                  id="startDate"
+                  name="startDate"
+                  value={formData.startDate}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                />
+              </div>
+              <div>
+                <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-2">
+                  Ending Date
+                </label>
+                <input
+                  type="date"
+                  id="endDate"
+                  name="endDate"
+                  value={formData.endDate}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                />
+              </div>
+            </div>
+          </div>
+
+          {formData.category === 'Internship' && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label htmlFor="stipend" className="block text-sm font-medium text-gray-700 mb-2">
+                  Stipend
+                </label>
+                <input
+                  type="text"
+                  id="stipend"
+                  name="stipend"
+                  value={formData.stipend}
+                  onChange={handleInputChange}
+                  placeholder="e.g., 15000/month"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                />
+              </div>
+              <div>
+                <label htmlFor="companyWorked" className="block text-sm font-medium text-gray-700 mb-2">
+                  Company Worked
+                </label>
+                <input
+                  type="text"
+                  id="companyWorked"
+                  name="companyWorked"
+                  value={formData.companyWorked}
+                  onChange={handleInputChange}
+                  placeholder="e.g., Tech Builders Ltd."
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                />
+              </div>
+              <div>
+                <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
+                  City
+                </label>
+                <input
+                  type="text"
+                  id="city"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleInputChange}
+                  placeholder="e.g., Bengaluru"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                />
+              </div>
+            </div>
+          )}
             <div>
               <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
                 Activity Title *
