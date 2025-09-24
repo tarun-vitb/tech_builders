@@ -98,6 +98,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Prevent creating or elevating to admin here
         role: role === 'admin' ? baseUser.role : (role || baseUser.role),
         ...(profileExtras || {}),
+        // Set department equal to branch for faculty and students
+        ...(profileExtras?.branch ? { department: profileExtras.branch } : {}),
       } as User;
 
       await setDoc(userRef, updated, { merge: true });

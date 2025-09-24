@@ -16,8 +16,10 @@ const FacultyDashboard: React.FC = () => {
   const [badgeMessage, setBadgeMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user?.department) {
-      console.warn('Faculty user has no department assigned');
+    // Use department if available, otherwise fall back to branch for backward compatibility
+    const userDepartment = user?.department || user?.branch;
+    if (!userDepartment) {
+      console.warn('Faculty user has no department or branch assigned');
       setActivities([]);
       return;
     }
@@ -30,7 +32,7 @@ const FacultyDashboard: React.FC = () => {
       snapshot.forEach((doc) => {
         const activity = { id: doc.id, ...doc.data() } as Activity;
         // Only show activities from the same department
-        if (activity.studentDepartment === user.department) {
+        if (activity.studentDepartment === userDepartment) {
           activitiesData.push(activity);
         }
       });
@@ -44,7 +46,7 @@ const FacultyDashboard: React.FC = () => {
     });
 
     return unsubscribe;
-  }, [user?.department]);
+  }, [user?.department, user?.branch]);
 
   const filteredActivities = activities.filter(activity => 
     filter === 'all' ? true : activity.status === filter
@@ -111,9 +113,9 @@ const FacultyDashboard: React.FC = () => {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Faculty Dashboard</h1>
         <p className="text-gray-600">Review and manage student activities</p>
-        {user?.department ? (
+        {user?.department || user?.branch ? (
           <p className="text-sm text-blue-600 font-medium mt-1">
-            Department: {user.department}
+            Department: {user.department || user.branch}
           </p>
         ) : (
           <p className="text-sm text-red-600 font-medium mt-1">

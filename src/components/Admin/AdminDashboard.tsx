@@ -4,6 +4,7 @@ import { collection, query, onSnapshot, doc, updateDoc } from 'firebase/firestor
 import { db } from '../../config/firebase';
 import { Activity, User, Stats } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
+import DepartmentAnalytics from './DepartmentAnalytics';
 
 interface DerivedAdminRequest {
   id: string;
@@ -264,6 +265,9 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Department Analytics Section */}
+      <DepartmentAnalytics />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Derived Admin Requests (Admins only) */}
